@@ -1,0 +1,12 @@
+{
+    "github": {
+        "org": "NiceCompany",
+        "token": "ReallyHugeTokenHere"
+    },
+    "squads": [{
+        "slackChannel": "@your.user",
+        "slackWebhookUrl": "https://hooks.slack.com/[...your-hook-url]",
+        "repositories": ["an-array-of-repos-at-this-org", "xablau-api", "tcheu-worker"],
+        "limitDays": 5
+    }]
+}
