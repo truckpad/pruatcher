@@ -2,3 +2,6 @@
 pruatcher.zip
 requests-2.12.4.dist-info
 requests
+venv/
+*.egg-info/
+dist/

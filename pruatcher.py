@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json
 import logging
 import os
@@ -16,6 +17,7 @@ if test_env:
     logging.basicConfig(stream=sys.stdout)
     logger.info('Running Pruatcher local as a developer. Enjoy')
 
+
 def lambda_handler(event, context):
     logger.info('got event {}: ' + json.dumps(event))
 
@@ -28,6 +30,7 @@ def lambda_handler(event, context):
         process_squads(squad, config['github'])
 
     return 'pru'
+
 
 def set_config_file():
     if test_env:
@@ -45,6 +48,7 @@ def set_config_file():
     bucket.download_file(configuration_s3_file, '/tmp/pruatcher.json')
 
     return '/tmp/pruatcher.json'
+
 
 def process_squads(squad, githubConf):
     logger.info('processing squad {}'.format(squad))
@@ -80,6 +84,7 @@ def process_squads(squad, githubConf):
 
         pulls = github_response.json()
 
+        repo_thread = None
         for pull in pulls:
             created_at = dateutil.parser.parse(pull['created_at']).date()
             date_delta = today - created_at
@@ -91,7 +96,7 @@ def process_squads(squad, githubConf):
                     intro_message_sent = True
 
                 if not repo_message_sent:
-                    send_message(
+                    repo_thread = send_message(
                         repo_message_template.format(
                             'https://github.com/' + github_organization + '/' + repo,
                             repo),
@@ -105,7 +110,7 @@ def process_squads(squad, githubConf):
                     pull['user']['login'],
                     date_delta.days))
 
-                send_message(message, slack_webhook_url, slack_channel)
+                send_message(message, slack_webhook_url, slack_channel, repo_thread)
 
             else:
                 logger.debug(
@@ -115,32 +120,35 @@ def process_squads(squad, githubConf):
         send_message('PRU', slack_webhook_url, slack_channel)
 
 
-def send_message(message, slack_webhook_url, slack_channel):
-    slack_api_request = {'username': 'PRUatcher',
+def send_message(message, slack_webhook_url, slack_channel, thread_ts=None):
+    slack_api_request = {'username': 'Pruatcher',
                          'icon_url': os.environ['slack_message_icon'],
                          'channel': slack_channel,
                          'text': message}
+    if thread_ts:
+        slack_api_request['thread_ts'] = thread_ts
 
     logger.debug(slack_api_request)
-    slack_response = requests.post(url=slack_webhook_url, data=json.dumps(slack_api_request))
+    slack_response = requests.post(url=slack_webhook_url, data=json.dumps(slack_api_request), headers={'Content-Type': 'application/json'})
     logger.debug(slack_response)
+    return slack_response.json()['ts']
 
 
 def pick_message(number_of_days):
     message = ''
     if number_of_days < 0:
-        message = '> <{}|{}> by <{}|{}> is open for {} days? Is that even possible?'
+        message = u'> <{}|{}> by <{}|{}> is open for {} days? Is that even possible?'
     elif 0 <= number_of_days <= 10:
-        message = '> <{}|{}> by <{}|{}> is open for {} days.'
+        message = u'> <{}|{}> by <{}|{}> is open for {} days.'
     elif 11 <= number_of_days <= 15:
-        message = '> <{}|{}> by <{}|{}> is open for {} days? Gee, come on... :snail:'
+        message = u'> <{}|{}> by <{}|{}> is open for {} days? Gee, come on... :snail:'
     elif 16 <= number_of_days <= 20:
-        message = '> <{}|{}> by <{}|{}> is open for embarrassing {} days! :facepalm:'
+        message = u'> <{}|{}> by <{}|{}> is open for embarrassing {} days! :facepalm:'
     elif 21 <= number_of_days <= 30:
-        message = '> <{}|{}> by <{}|{}> is open for {} days? Outch... :obsequious:'
+        message = u'> <{}|{}> by <{}|{}> is open for {} days? Outch... :obsequious:'
     elif number_of_days > 30:
-        message = '> <{}|{}> by <{}|{}> is open for... WAIT, WHAT??? How can you live with yourself? {} freaking ' \
-                  'days?! :baixo-astral: '
+        message = u'> <{}|{}> by <{}|{}> is open for... WAIT, WHAT??? How can you live with yourself? {} freaking ' \
+                  u'days?! :baixo-astral: '
     return message
 
 
